@@ -1,0 +1,110 @@
+name: Platform Baseline CI
+
+on:
+  push:
+    branches: [main, "tymeline-ae*"]
+    paths:
+      - "infrastructure/**"
+      - "charts/**"
+      - "kubernetes/**"
+      - "scripts/**"
+      - ".github/workflows/platform-ci.yml"
+  pull_request:
+    paths:
+      - "infrastructure/**"
+      - "charts/**"
+      - "kubernetes/**"
+      - "scripts/**"
+
+env:
+  TF_IN_AUTOMATION: "true"
+  HELM_REPO_URL: ${{ vars.HELM_REPO_URL }}
+  HELM_REPO_NAME: ${{ vars.HELM_REPO_NAME }}
+
+jobs:
+  validate:
+    name: Terraform + Helm validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure/environments/dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform fmt
+        working-directory: infrastructure
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (dev)
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate (dev)
+        run: terraform validate
+
+      - name: Helm lint ChartMuseum
+        working-directory: ${{ github.workspace }}
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm lint charts/chartmuseum -f charts/chartmuseum/values-dev.yaml
+          helm template chartmuseum charts/chartmuseum -f charts/chartmuseum/values-dev.yaml -n chartmuseum > /tmp/chartmuseum-rendered.yaml
+          echo "Rendered ChartMuseum manifests OK"
+
+      - name: Upload CI variable template artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-variables-example
+          path: .github/ci-variables.env.example
+
+  plan-dev:
+    name: Terraform plan (dev)
+    needs: validate
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: infrastructure/environments/dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Configure AWS credentials
+        if: ${{ env.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+
+      - name: Terraform init
+        if: ${{ vars.AWS_ROLE_ARN != '' }}
+        run: |
+          if [ -f backend.hcl ]; then
+            terraform init -input=false -backend-config=backend.hcl
+          else
+            terraform init -input=false
+          fi
+
+      - name: Terraform plan
+        if: ${{ vars.AWS_ROLE_ARN != '' }}
+        run: |
+          mkdir -p ../../../artifacts
+          terraform plan -input=false -out=../../../artifacts/dev.tfplan
+          terraform show -no-color ../../../artifacts/dev.tfplan > ../../../artifacts/dev-plan.txt
+
+      - name: Upload plan artifacts
+        if: ${{ vars.AWS_ROLE_ARN != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-dev-plan
+          path: artifacts/

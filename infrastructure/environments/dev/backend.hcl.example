@@ -1,0 +1,5 @@
+bucket         = "fabops-terraform-state"
+key            = "platform/dev/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "fabops-terraform-locks"
+encrypt        = true

@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chartmuseum.fullname" . }}
+  labels:
+    {{- include "chartmuseum.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chartmuseum.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "chartmuseum.selectorLabels" . | nindent 8 }}
+        fabops.io/environment: {{ .Values.env.environment | quote }}
+    spec:
+      serviceAccountName: {{ include "chartmuseum.serviceAccountName" . }}
+      containers:
+        - name: chartmuseum
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: STORAGE
+              value: {{ .Values.env.storage | quote }}
+            - name: STORAGE_LOCAL_ROOTDIR
+              value: /storage
+            - name: DISABLE_API
+              value: {{ .Values.env.disableAPI | quote }}
+            - name: ALLOW_OVERWRITE
+              value: {{ .Values.env.allowOverwrite | quote }}
+            - name: DEPTH
+              value: {{ .Values.env.depth | quote }}
+            - name: FABOPS_ENVIRONMENT
+              value: {{ .Values.env.environment | quote }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: storage
+              mountPath: /storage
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "chartmuseum.fullname" . }}-storage
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
