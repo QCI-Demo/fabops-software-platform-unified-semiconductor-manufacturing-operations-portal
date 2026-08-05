@@ -1,0 +1,23 @@
+# Dev overrides — applied to the chartmuseum (dev) namespace
+replicaCount: 1
+
+env:
+  environment: dev
+  allowOverwrite: true
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+publisher:
+  create: true
+  serviceAccount:
+    name: chart-publisher

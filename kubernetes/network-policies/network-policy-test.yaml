@@ -1,0 +1,42 @@
+# Validation fixture: client in apps tries to reach a probe in the ChartMuseum namespace (dev).
+# Default-deny + same-namespace-only policies should deny this cross-namespace traffic.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netpol-probe-server
+  namespace: dev
+  labels:
+    app: netpol-probe-server
+spec:
+  containers:
+    - name: nginx
+      image: public.ecr.aws/nginx/nginx:1.27-alpine
+      ports:
+        - containerPort: 80
+  restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netpol-probe-server
+  namespace: dev
+spec:
+  selector:
+    app: netpol-probe-server
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: netpol-probe-client
+  namespace: apps
+  labels:
+    app: netpol-probe-client
+spec:
+  containers:
+    - name: client
+      image: public.ecr.aws/docker/library/busybox:1.36
+      command: ["sleep", "3600"]
+  restartPolicy: Never

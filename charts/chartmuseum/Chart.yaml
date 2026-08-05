@@ -1,0 +1,13 @@
+apiVersion: v2
+name: chartmuseum
+description: FabOps Helm chart repository (ChartMuseum) with RBAC for chart publishing
+type: application
+version: 0.1.0
+appVersion: "3.10.3"
+keywords:
+  - helm
+  - chartmuseum
+  - repository
+maintainers:
+  - name: FabOps Platform
+    email: platform@fabops.local

@@ -2,12 +2,39 @@
 node_modules/
 vendor/
 
-# Env
+# Env / secrets
 .env
 .env.local
+**/.env
+**/secrets*.tfvars
+**/backend.hcl
+!.github/ci-variables.env.example
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
 # Build / IDE
 dist/
 build/
 .idea/
 *.log
+
+# Generated runtime artifacts (keep directory + docs; ignore secrets/plans/state)
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/README.md
+!artifacts/*.md
+.github/ci-variables.env.generated
+
+# Kubeconfig
+**/kubeconfig*
+!**/*.example

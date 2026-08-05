@@ -1,0 +1,14 @@
+ChartMuseum has been deployed to namespace {{ .Release.Namespace }}.
+
+In-cluster repository URL:
+  http://{{ include "chartmuseum.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+
+Publisher ServiceAccount (RBAC for chart push jobs):
+  {{ .Values.publisher.serviceAccount.name }}
+
+Add to CI variables (example):
+  HELM_REPO_URL=http://{{ include "chartmuseum.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}
+  HELM_REPO_NAME=fabops-{{ .Values.env.environment }}
+
+Push a chart (from a Job using the publisher SA):
+  helm cm-push ./my-chart {{ .Values.env.environment }}

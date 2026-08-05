@@ -1,0 +1,74 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/helm/chartmuseum
+  tag: v3.10.3
+  pullPolicy: IfNotPresent
+
+fullnameOverride: ""
+fullnameOverride: "chartmuseum"
+
+serviceAccount:
+  create: true
+  name: chartmuseum
+  annotations: {}
+
+publisher:
+  create: true
+  serviceAccount:
+    name: chart-publisher
+    annotations: {}
+  # Namespace-scoped Role granting push/list against ChartMuseum via port-forward/job patterns
+  rbac:
+    create: true
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  hosts:
+    - host: charts.fabops.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+
+env:
+  environment: dev
+  # ChartMuseum storage backend: local (PVC). S3 can be enabled via extraEnv.
+  storage: local
+  disableAPI: false
+  allowOverwrite: false
+  depth: 1
+
+extraEnv: []
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# NetworkPolicy: allow ingress from same namespace + kube-system (optional probes)
+networkPolicy:
+  enabled: true
+  allowFromNamespaces:
+    - chartmuseum
