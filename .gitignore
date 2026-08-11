@@ -11,3 +11,7 @@ dist/
 build/
 .idea/
 *.log
+
+# Downloaded Avro tools (fetched by scripts/avro-lint.sh or CI)
+tools/avro-tools.jar
+tools/

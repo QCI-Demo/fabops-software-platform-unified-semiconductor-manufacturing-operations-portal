@@ -1,0 +1,57 @@
+{
+  "type": "record",
+  "name": "RawTelemetryEvent",
+  "namespace": "com.fabops.telemetry.events",
+  "doc": "Raw equipment telemetry ingested from fab tools before enrichment or status derivation. Schema version 1.0.",
+  "fields": [
+    {
+      "name": "equipmentId",
+      "type": "string",
+      "doc": "Stable identifier of the producing equipment or tool instance."
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Event occurrence time in UTC epoch milliseconds."
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "map",
+        "values": "string"
+      },
+      "doc": "Opaque key/value telemetry measurements as strings (numeric values serialized as strings)."
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "End-to-end correlation identifier used for tracing and replay."
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Semantic version of this event contract (e.g. 1.0.0)."
+    },
+    {
+      "name": "sourceSystem",
+      "type": "string",
+      "doc": "Upstream producer system or adapter name.",
+      "default": "unknown"
+    },
+    {
+      "name": "metricName",
+      "type": ["null", "string"],
+      "doc": "Optional primary metric name when the payload is single-valued.",
+      "default": null
+    },
+    {
+      "name": "unit",
+      "type": ["null", "string"],
+      "doc": "Optional unit of measure for the primary metric.",
+      "default": null
+    }
+  ]
+}

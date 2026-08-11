@@ -1,0 +1,27 @@
+# Telemetry Schema Registry CI
+# Validates Avro event contracts on every push and merge request.
+
+stages:
+  - lint
+
+variables:
+  AVRO_TOOLS_VERSION: "1.11.4"
+  AVRO_TOOLS_JAR: "${CI_PROJECT_DIR}/tools/avro-tools.jar"
+
+avro-tools-lint:
+  stage: lint
+  image: eclipse-temurin:21-jre
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl ca-certificates
+    - mkdir -p tools
+    - |
+      curl -fsSL -o "${AVRO_TOOLS_JAR}" \
+        "https://repo1.maven.org/maven2/org/apache/avro/avro-tools/${AVRO_TOOLS_VERSION}/avro-tools-${AVRO_TOOLS_VERSION}.jar"
+  script:
+    # Executes avro-tools lint (canonical parse validation) for all .avsc files
+    - chmod +x scripts/avro-lint.sh
+    - ./scripts/avro-lint.sh schemas
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG
