@@ -1,0 +1,88 @@
+{
+  "type": "record",
+  "name": "AuditEvent",
+  "namespace": "com.fabops.telemetry.events",
+  "doc": "Immutable audit trail for telemetry pipeline actions (ingest, transform, replay, dead-letter remediation). Schema version 1.0.",
+  "fields": [
+    {
+      "name": "equipmentId",
+      "type": "string",
+      "doc": "Equipment related to the audited action; use SYSTEM for pipeline-wide actions."
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Audit event time in UTC epoch milliseconds."
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "record",
+        "name": "AuditPayload",
+        "fields": [
+          {
+            "name": "action",
+            "type": {
+              "type": "enum",
+              "name": "AuditAction",
+              "symbols": [
+                "INGEST",
+                "VALIDATE",
+                "TRANSFORM",
+                "EMIT_STATUS",
+                "EMIT_ALERT",
+                "DEAD_LETTER",
+                "REPLAY",
+                "SCHEMA_REGISTER",
+                "ACKNOWLEDGE"
+              ]
+            },
+            "doc": "Audited pipeline action."
+          },
+          {
+            "name": "actor",
+            "type": "string",
+            "doc": "Service identity or operator principal that performed the action."
+          },
+          {
+            "name": "outcome",
+            "type": {
+              "type": "enum",
+              "name": "AuditOutcome",
+              "symbols": ["SUCCESS", "FAILURE", "SKIPPED"]
+            },
+            "doc": "Action outcome."
+          },
+          {
+            "name": "resource",
+            "type": "string",
+            "doc": "Resource acted upon (topic, schema subject, alert id, etc.)."
+          },
+          {
+            "name": "details",
+            "type": {
+              "type": "map",
+              "values": "string"
+            },
+            "doc": "Additional non-PII audit attributes.",
+            "default": {}
+          }
+        ]
+      },
+      "doc": "Structured audit payload."
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "End-to-end correlation identifier linking related pipeline events."
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Semantic version of this audit contract (e.g. 1.0.0)."
+    }
+  ]
+}

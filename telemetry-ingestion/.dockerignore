@@ -1,0 +1,9 @@
+target
+.git
+.idea
+.vscode
+*.md
+charts
+chart
+.github
+**/.DS_Store

@@ -1,0 +1,89 @@
+{
+  "type": "record",
+  "name": "DeadLetterEvent",
+  "namespace": "com.fabops.telemetry.events",
+  "doc": "Poison-pill or permanently failed event routed to the dead-letter topic for remediation and replay. Schema version 1.0.",
+  "fields": [
+    {
+      "name": "equipmentId",
+      "type": "string",
+      "doc": "Equipment associated with the failed event; use UNKNOWN when unavailable."
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Time the event was moved to the dead-letter topic (UTC epoch milliseconds)."
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "record",
+        "name": "DeadLetterPayload",
+        "fields": [
+          {
+            "name": "originalTopic",
+            "type": "string",
+            "doc": "Source topic of the failed event."
+          },
+          {
+            "name": "originalSchema",
+            "type": ["null", "string"],
+            "doc": "Name of the original event schema when known.",
+            "default": null
+          },
+          {
+            "name": "originalSchemaVersion",
+            "type": ["null", "string"],
+            "doc": "schemaVersion from the original event when known.",
+            "default": null
+          },
+          {
+            "name": "failureReason",
+            "type": "string",
+            "doc": "Human-readable failure reason."
+          },
+          {
+            "name": "failureCode",
+            "type": {
+              "type": "enum",
+              "name": "DeadLetterFailureCode",
+              "symbols": [
+                "SCHEMA_VALIDATION",
+                "DESERIALIZATION",
+                "PROCESSING_ERROR",
+                "TIMEOUT",
+                "UNKNOWN"
+              ]
+            },
+            "doc": "Normalized failure classification."
+          },
+          {
+            "name": "originalPayload",
+            "type": "string",
+            "doc": "Original event payload serialized as UTF-8 JSON or Base64 for binary."
+          },
+          {
+            "name": "attemptCount",
+            "type": "int",
+            "doc": "Number of processing attempts before dead-lettering.",
+            "default": 1
+          }
+        ]
+      },
+      "doc": "Dead-letter envelope describing the failure and original content."
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "End-to-end correlation identifier preserved from the original event when available."
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Semantic version of this dead-letter contract (e.g. 1.0.0)."
+    }
+  ]
+}

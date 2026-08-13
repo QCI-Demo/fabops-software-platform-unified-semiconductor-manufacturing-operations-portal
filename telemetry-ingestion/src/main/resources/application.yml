@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: telemetry-ingestion
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+
+server:
+  port: 8080
+
+fabops:
+  telemetry:
+    topics:
+      raw: fabops.telemetry.raw
+      dlq: fabops.telemetry.dlq
+    schema-registry:
+      url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+      # Subject naming for raw telemetry validation
+      raw-subject: fabops.telemetry.raw-value
+      # When true (default), also load classpath schemas/ as a local registry fallback
+      classpath-fallback: true
+    ingestion:
+      service-name: telemetry-ingestion
+      default-schema: RawTelemetryEvent
+      default-schema-version: "1.0.0"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.fabops.telemetry.ingestion: INFO
