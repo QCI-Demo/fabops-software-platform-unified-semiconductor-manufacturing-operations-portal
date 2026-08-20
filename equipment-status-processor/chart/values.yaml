@@ -1,0 +1,205 @@
+# Default values for equipment-status-processor Helm chart
+# Override these values via --set or values file
+
+# Replica count for the stream processor
+replicaCount: 3
+
+# Container image configuration
+image:
+  repository: fabops/equipment-status-processor
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+
+# Container security context
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Kafka configuration
+kafka:
+  # Kafka broker connection
+  bootstrapServers: "kafka-cluster-kafka-bootstrap:9092"
+  
+  # Schema Registry URL
+  schemaRegistryUrl: "http://schema-registry:8081"
+  
+  # Streams application configuration
+  streams:
+    applicationId: "equipment-status-processor"
+    replicationFactor: 3
+    commitIntervalMs: 1000
+    stateDir: "/tmp/kafka-streams"
+  
+  # Topic configuration
+  topics:
+    telemetryRaw: "fabops.telemetry.raw"
+    equipmentStatus: "fabops.equipment.status"
+    criticalAlert: "fabops.alerts.critical"
+    
+    # Topic creation settings (used by init container or external operator)
+    config:
+      - name: fabops.telemetry.raw
+        partitions: 12
+        replicationFactor: 3
+        config:
+          retention.ms: "604800000"  # 7 days
+          cleanup.policy: "delete"
+          min.insync.replicas: "2"
+      
+      - name: fabops.equipment.status
+        partitions: 12
+        replicationFactor: 3
+        config:
+          cleanup.policy: "compact"
+          min.compaction.lag.ms: "3600000"
+          delete.retention.ms: "86400000"
+          min.insync.replicas: "2"
+      
+      - name: fabops.alerts.critical
+        partitions: 6
+        replicationFactor: 3
+        config:
+          retention.ms: "2592000000"  # 30 days
+          cleanup.policy: "delete"
+          min.insync.replicas: "2"
+
+# Health rule engine configuration
+health:
+  rules:
+    temperature:
+      warningThreshold: 75.0
+      criticalThreshold: 85.0
+      maxThreshold: 95.0
+    pressure:
+      minThreshold: 0.5
+      warningLowThreshold: 1.0
+      warningHighThreshold: 9.0
+      criticalThreshold: 10.0
+    errorCodes:
+      criticalCodes: "E001,E002,E003,E010"
+      warningCodes: "W001,W002,W003"
+    weights:
+      temperature: 0.4
+      pressure: 0.3
+      errorCode: 0.3
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: "2000m"
+    memory: "2Gi"
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+
+# Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Startup probe configuration
+startupProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity rules - spread across availability zones
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - equipment-status-processor
+          topologyKey: topology.kubernetes.io/zone
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Persistent volume for Kafka Streams state store
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+
+# Logging configuration
+logging:
+  level: INFO
+  kafkaLogLevel: INFO
+
+# Additional environment variables
+extraEnvVars: []
+#  - name: EXTRA_VAR
+#    value: "value"
+
+# Additional environment variables from ConfigMaps or Secrets
+extraEnvFrom: []
+#  - configMapRef:
+#      name: my-config
+#  - secretRef:
+#      name: my-secret

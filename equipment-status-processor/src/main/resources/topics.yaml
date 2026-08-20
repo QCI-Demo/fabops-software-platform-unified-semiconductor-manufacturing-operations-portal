@@ -1,0 +1,49 @@
+# Kafka Topic Configuration for FabOps Equipment Status Processing
+# Used by Helm chart deployment for topic auto-creation
+
+topics:
+  # Raw telemetry topic - source of equipment sensor data
+  - name: fabops.telemetry.raw
+    partitions: 12
+    replicationFactor: 3
+    config:
+      # Retention: 7 days
+      retention.ms: "604800000"
+      # Segment size for efficient deletion
+      segment.bytes: "1073741824"
+      # Cleanup policy: delete old segments
+      cleanup.policy: "delete"
+      # Min in-sync replicas for durability
+      min.insync.replicas: "2"
+
+  # Equipment status topic - compacted for latest status per equipment
+  - name: fabops.equipment.status
+    partitions: 12
+    replicationFactor: 3
+    config:
+      # Compaction for latest status per equipment key
+      cleanup.policy: "compact"
+      # Minimum compaction lag: 1 hour
+      min.compaction.lag.ms: "3600000"
+      # Delete retention: 24 hours for tombstones
+      delete.retention.ms: "86400000"
+      # Segment size for compaction efficiency
+      segment.bytes: "536870912"
+      # Min in-sync replicas for durability
+      min.insync.replicas: "2"
+
+  # Critical alert topic - retained for compliance and analysis
+  - name: fabops.alerts.critical
+    partitions: 6
+    replicationFactor: 3
+    config:
+      # Retention: 30 days for compliance
+      retention.ms: "2592000000"
+      # Segment size
+      segment.bytes: "536870912"
+      # Cleanup policy: delete old segments
+      cleanup.policy: "delete"
+      # Min in-sync replicas for durability
+      min.insync.replicas: "2"
+      # Message timestamp type: CreateTime for accurate alert timing
+      message.timestamp.type: "CreateTime"

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: equipment-status-processor
+description: Kafka Streams processor for equipment health metrics and critical alerts
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - kafka-streams
+  - equipment-health
+  - telemetry
+  - fabops
+maintainers:
+  - name: FabOps Platform Team
