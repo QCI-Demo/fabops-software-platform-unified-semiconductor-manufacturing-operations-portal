@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "equipment-status-processor.fullname" . }}
+  labels:
+    {{- include "equipment-status-processor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "equipment-status-processor.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "equipment-status-processor.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "equipment-status-processor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            # Kafka configuration
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: SCHEMA_REGISTRY_URL
+              value: {{ .Values.kafka.schemaRegistryUrl | quote }}
+            - name: KAFKA_REPLICATION_FACTOR
+              value: {{ .Values.kafka.streams.replicationFactor | quote }}
+            - name: KAFKA_NUM_STREAM_THREADS
+              value: {{ .Values.kafka.streams.numStreamThreads | quote }}
+            
+            # Topic names
+            - name: FABOPS_TOPICS_RAW_TELEMETRY
+              value: {{ .Values.kafka.topics.rawTelemetry.name | quote }}
+            - name: FABOPS_TOPICS_EQUIPMENT_STATUS
+              value: {{ .Values.kafka.topics.equipmentStatus.name | quote }}
+            - name: FABOPS_TOPICS_CRITICAL_ALERT
+              value: {{ .Values.kafka.topics.criticalAlert.name | quote }}
+            
+            # Health thresholds
+            - name: FABOPS_HEALTH_THRESHOLDS_TEMPERATURE_WARNING
+              value: {{ .Values.health.thresholds.temperature.warning | quote }}
+            - name: FABOPS_HEALTH_THRESHOLDS_TEMPERATURE_CRITICAL
+              value: {{ .Values.health.thresholds.temperature.critical | quote }}
+            - name: FABOPS_HEALTH_SCORING_CRITICAL_THRESHOLD
+              value: {{ .Values.health.scoring.criticalThreshold | quote }}
+            
+            # JVM options
+            - name: JAVA_OPTS
+              value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
+            
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: state-store
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: state-store
+          persistentVolumeClaim:
+            claimName: {{ include "equipment-status-processor.fullname" . }}-state
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
