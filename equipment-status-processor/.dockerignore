@@ -1,0 +1,36 @@
+# Docker ignore file for equipment-status-processor
+
+# Build artifacts
+target/
+*.jar
+!target/app.jar
+
+# IDE files
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Helm chart (not needed in container)
+chart/
+
+# Maven wrapper (using multi-stage build)
+.mvn/
+mvnw
+mvnw.cmd
+
+# Test files
+src/test/
+
+# CI/CD files
+.github/
+Jenkinsfile

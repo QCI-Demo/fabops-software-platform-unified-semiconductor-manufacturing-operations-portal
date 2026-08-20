@@ -1,0 +1,13 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "equipment-status-processor.fullname" . }}
+  labels:
+    {{- include "equipment-status-processor.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "equipment-status-processor.selectorLabels" . | nindent 6 }}
+{{- end }}

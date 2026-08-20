@@ -1,0 +1,58 @@
+spring:
+  application:
+    name: equipment-status-processor
+
+kafka:
+  streams:
+    application-id: equipment-status-processor
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+    state-dir: ${KAFKA_STATE_DIR:/tmp/kafka-streams}
+    commit-interval-ms: ${KAFKA_COMMIT_INTERVAL_MS:1000}
+
+  schema-registry:
+    url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+
+  topics:
+    telemetry-raw: ${KAFKA_TOPIC_TELEMETRY_RAW:fabops.telemetry.raw}
+    equipment-status: ${KAFKA_TOPIC_EQUIPMENT_STATUS:fabops.equipment.status}
+    critical-alert: ${KAFKA_TOPIC_CRITICAL_ALERT:fabops.alerts.critical}
+
+# Health Rule Engine Configuration
+health:
+  rules:
+    temperature:
+      warning-threshold: ${HEALTH_TEMP_WARNING:75.0}
+      critical-threshold: ${HEALTH_TEMP_CRITICAL:85.0}
+      max-threshold: ${HEALTH_TEMP_MAX:95.0}
+    pressure:
+      min-threshold: ${HEALTH_PRESSURE_MIN:0.5}
+      warning-low-threshold: ${HEALTH_PRESSURE_WARNING_LOW:1.0}
+      warning-high-threshold: ${HEALTH_PRESSURE_WARNING_HIGH:9.0}
+      critical-threshold: ${HEALTH_PRESSURE_CRITICAL:10.0}
+    error-codes:
+      critical-codes: ${HEALTH_CRITICAL_ERROR_CODES:E001,E002,E003,E010}
+      warning-codes: ${HEALTH_WARNING_ERROR_CODES:W001,W002,W003}
+    # Scoring weights
+    weights:
+      temperature: ${HEALTH_WEIGHT_TEMP:0.4}
+      pressure: ${HEALTH_WEIGHT_PRESSURE:0.3}
+      error-code: ${HEALTH_WEIGHT_ERROR:0.3}
+
+# Actuator endpoints for health and metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.fabops: ${LOG_LEVEL:INFO}
+    org.apache.kafka.streams: ${KAFKA_LOG_LEVEL:INFO}
