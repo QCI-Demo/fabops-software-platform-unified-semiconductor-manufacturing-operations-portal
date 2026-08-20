@@ -1,0 +1,188 @@
+# Default values for equipment-status-processor
+# This is a YAML-formatted file.
+
+replicaCount: 2
+
+image:
+  repository: fabops/equipment-status-processor
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to chart appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Kafka configuration
+kafka:
+  bootstrapServers: "kafka-bootstrap:9092"
+  schemaRegistryUrl: "http://schema-registry:8081"
+  
+  streams:
+    applicationId: "fabops-equipment-status-processor"
+    replicationFactor: 3
+    numStreamThreads: 2
+    commitIntervalMs: 1000
+    processingGuarantee: "exactly_once_v2"
+    stateDir: "/tmp/kafka-streams"
+  
+  # Topic configuration (referenced from topics.yaml)
+  topics:
+    rawTelemetry:
+      name: fabops.telemetry.raw
+      partitions: 12
+      replicationFactor: 3
+      config:
+        retention.ms: "604800000"
+        cleanup.policy: "delete"
+        min.insync.replicas: "2"
+        
+    equipmentStatus:
+      name: fabops.equipment.status
+      partitions: 12
+      replicationFactor: 3
+      config:
+        cleanup.policy: "compact"
+        min.cleanable.dirty.ratio: "0.5"
+        min.insync.replicas: "2"
+        
+    criticalAlert:
+      name: fabops.alerts.critical
+      partitions: 6
+      replicationFactor: 3
+      config:
+        retention.ms: "2592000000"
+        cleanup.policy: "delete"
+        min.insync.replicas: "2"
+
+# Health rule engine thresholds
+health:
+  thresholds:
+    temperature:
+      warning: 85.0
+      critical: 95.0
+    pressure:
+      warningLow: 0.8
+      warningHigh: 1.2
+      criticalLow: 0.5
+      criticalHigh: 1.5
+    errorCode:
+      criticalCodes:
+        - E001
+        - E002
+        - E003
+        - FAULT
+        - EMERGENCY
+    vibration:
+      warning: 5.0
+      critical: 10.0
+    humidity:
+      warningLow: 30.0
+      warningHigh: 70.0
+      criticalLow: 20.0
+      criticalHigh: 80.0
+  scoring:
+    baseScore: 100
+    temperatureWarningPenalty: 15
+    temperatureCriticalPenalty: 40
+    pressureWarningPenalty: 10
+    pressureCriticalPenalty: 30
+    errorCodeCriticalPenalty: 50
+    vibrationWarningPenalty: 10
+    vibrationCriticalPenalty: 25
+    humidityWarningPenalty: 5
+    humidityCriticalPenalty: 15
+    criticalThreshold: 50
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+# Liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 20
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - equipment-status-processor
+          topologyKey: kubernetes.io/hostname
+
+# Persistent volume for Kafka Streams state store
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /tmp/kafka-streams
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.fabops: DEBUG
+    org.apache.kafka.streams: INFO
+
+# Environment variables (additional)
+env: []
+
+# Extra volumes
+extraVolumes: []
+extraVolumeMounts: []

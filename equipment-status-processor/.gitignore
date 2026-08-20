@@ -1,0 +1,20 @@
+# IDE and OS
+.idea/
+*.iml
+.DS_Store
+*.swp
+
+# Build outputs
+target/
+build/
+out/
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven
+!.mvn/wrapper/maven-wrapper.jar
+*.log
+
+# Kubernetes secrets (do not commit)
+*-secret.yaml
+*.secret

@@ -1,0 +1,82 @@
+spring:
+  application:
+    name: equipment-status-processor
+
+# Kafka Streams Configuration
+kafka:
+  streams:
+    application-id: fabops-equipment-status-processor
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    state-dir: /tmp/kafka-streams
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+    num-stream-threads: ${KAFKA_NUM_STREAM_THREADS:2}
+    commit-interval-ms: 1000
+    processing-guarantee: exactly_once_v2
+  schema-registry:
+    url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+
+# Topic Configuration
+fabops:
+  topics:
+    raw-telemetry: fabops.telemetry.raw
+    equipment-status: fabops.equipment.status
+    critical-alert: fabops.alerts.critical
+  
+  # Health Rule Engine Thresholds
+  health:
+    thresholds:
+      temperature:
+        warning: 85.0
+        critical: 95.0
+      pressure:
+        warning-low: 0.8
+        warning-high: 1.2
+        critical-low: 0.5
+        critical-high: 1.5
+      error-code:
+        critical-codes:
+          - E001
+          - E002
+          - E003
+          - FAULT
+          - EMERGENCY
+      vibration:
+        warning: 5.0
+        critical: 10.0
+      humidity:
+        warning-low: 30.0
+        warning-high: 70.0
+        critical-low: 20.0
+        critical-high: 80.0
+    scoring:
+      base-score: 100
+      temperature-warning-penalty: 15
+      temperature-critical-penalty: 40
+      pressure-warning-penalty: 10
+      pressure-critical-penalty: 30
+      error-code-critical-penalty: 50
+      vibration-warning-penalty: 10
+      vibration-critical-penalty: 25
+      humidity-warning-penalty: 5
+      humidity-critical-penalty: 15
+      critical-threshold: 50
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    kafka:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.fabops: DEBUG
+    org.apache.kafka.streams: INFO
