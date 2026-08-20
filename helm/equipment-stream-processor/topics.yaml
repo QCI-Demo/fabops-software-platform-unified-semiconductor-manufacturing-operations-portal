@@ -1,0 +1,45 @@
+# Kafka Topics Configuration for Equipment Stream Processor
+# This file defines topic configurations referenced in Helm chart via .Values.kafka.topics
+
+topics:
+  # Raw telemetry ingestion topic
+  # Retention: 7 days for replay and debugging
+  - name: fabops.telemetry.raw
+    partitions: 12
+    replicationFactor: 3
+    config:
+      retention.ms: "604800000"  # 7 days
+      cleanup.policy: delete
+      min.insync.replicas: "2"
+      compression.type: lz4
+      segment.bytes: "1073741824"  # 1GB segments
+      
+  # Equipment status topic - compacted for latest state
+  # Compacted: stores latest health status per equipment ID
+  - name: fabops.equipment.status
+    partitions: 12
+    replicationFactor: 3
+    config:
+      cleanup.policy: compact
+      min.cleanable.dirty.ratio: "0.1"
+      delete.retention.ms: "86400000"  # 24 hours tombstone retention
+      segment.ms: "3600000"  # 1 hour segment roll
+      min.insync.replicas: "2"
+      compression.type: lz4
+      
+  # Critical alerts topic
+  # Retention: 30 days for audit and incident analysis
+  - name: fabops.alerts.critical
+    partitions: 6
+    replicationFactor: 3
+    config:
+      retention.ms: "2592000000"  # 30 days
+      cleanup.policy: delete
+      min.insync.replicas: "2"
+      compression.type: lz4
+      segment.bytes: "536870912"  # 512MB segments
+
+# Topic creation can be automated via:
+# 1. Strimzi KafkaTopic CRDs
+# 2. Kafka AdminClient in application startup
+# 3. Terraform/Pulumi infrastructure code
