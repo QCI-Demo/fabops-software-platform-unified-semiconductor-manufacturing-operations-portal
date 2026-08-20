@@ -11,3 +11,12 @@ dist/
 build/
 .idea/
 *.log
+
+# Java / Maven
+**/target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# OS
+.DS_Store

@@ -1,0 +1,92 @@
+{
+  "type": "record",
+  "name": "CriticalAlertEvent",
+  "namespace": "com.fabops.telemetry.events",
+  "doc": "High-priority alert derived from telemetry or equipment-status thresholds. Schema version 1.0.",
+  "fields": [
+    {
+      "name": "equipmentId",
+      "type": "string",
+      "doc": "Equipment that triggered the alert."
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Alert detection time in UTC epoch milliseconds."
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "record",
+        "name": "CriticalAlertPayload",
+        "fields": [
+          {
+            "name": "alertId",
+            "type": "string",
+            "doc": "Unique alert identifier (stable across retries)."
+          },
+          {
+            "name": "severity",
+            "type": {
+              "type": "enum",
+              "name": "AlertSeverity",
+              "symbols": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+            },
+            "doc": "Alert severity classification."
+          },
+          {
+            "name": "title",
+            "type": "string",
+            "doc": "Short human-readable alert title."
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "doc": "Detailed alert description for operators."
+          },
+          {
+            "name": "threshold",
+            "type": ["null", "string"],
+            "doc": "Optional threshold that was breached.",
+            "default": null
+          },
+          {
+            "name": "observedValue",
+            "type": ["null", "string"],
+            "doc": "Optional observed value that breached the threshold.",
+            "default": null
+          },
+          {
+            "name": "attributes",
+            "type": {
+              "type": "map",
+              "values": "string"
+            },
+            "doc": "Additional alert attributes.",
+            "default": {}
+          }
+        ]
+      },
+      "doc": "Structured critical-alert payload."
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "End-to-end correlation identifier used for tracing and replay."
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Semantic version of this event contract (e.g. 1.0.0)."
+    },
+    {
+      "name": "acknowledged",
+      "type": "boolean",
+      "doc": "Whether an operator has acknowledged the alert.",
+      "default": false
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: telemetry-ingestion
+description: Helm chart stub for FabOps validated telemetry ingestion service
+type: application
+version: 0.1.0
+appVersion: "0.0.1"

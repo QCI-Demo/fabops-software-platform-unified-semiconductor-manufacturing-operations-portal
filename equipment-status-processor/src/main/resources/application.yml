@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: equipment-status-processor
+
+kafka:
+  streams:
+    application-id: fabops-equipment-status-processor
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:1}
+    state-dir: ${KAFKA_STATE_DIR:/tmp/kafka-streams}
+
+fabops:
+  topics:
+    raw-telemetry: ${TOPIC_RAW_TELEMETRY:fabops.telemetry.raw}
+    equipment-status: ${TOPIC_EQUIPMENT_STATUS:fabops.equipment.status}
+    critical-alert: ${TOPIC_CRITICAL_ALERT:fabops.equipment.critical-alert}
+  health:
+    thresholds:
+      temperature:
+        warning: 75.0
+        critical: 90.0
+      pressure:
+        warning-low: 0.8
+        warning-high: 1.2
+        critical-low: 0.5
+        critical-high: 1.5
+      error-codes:
+        critical:
+          - E001
+          - E002
+          - E003
+          - E010
+          - E020
+        warning:
+          - W001
+          - W002
+          - W003
+    scoring:
+      base-score: 100
+      temperature-weight: 30
+      pressure-weight: 30
+      error-code-weight: 40
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  health:
+    kafka:
+      enabled: true
+
+logging:
+  level:
+    com.fabops.equipment.processor: INFO
+    org.apache.kafka.streams: WARN

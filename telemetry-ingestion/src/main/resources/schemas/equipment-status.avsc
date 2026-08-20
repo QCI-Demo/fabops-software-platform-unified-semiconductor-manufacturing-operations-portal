@@ -1,0 +1,77 @@
+{
+  "type": "record",
+  "name": "EquipmentStatusEvent",
+  "namespace": "com.fabops.telemetry.events",
+  "doc": "Derived equipment operational status emitted by stream processors. Schema version 1.0.",
+  "fields": [
+    {
+      "name": "equipmentId",
+      "type": "string",
+      "doc": "Stable identifier of the equipment whose status changed."
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Status observation time in UTC epoch milliseconds."
+    },
+    {
+      "name": "payload",
+      "type": {
+        "type": "record",
+        "name": "EquipmentStatusPayload",
+        "fields": [
+          {
+            "name": "status",
+            "type": {
+              "type": "enum",
+              "name": "EquipmentStatus",
+              "symbols": ["IDLE", "RUNNING", "SETUP", "MAINTENANCE", "DOWN", "UNKNOWN"]
+            },
+            "doc": "Normalized equipment status."
+          },
+          {
+            "name": "previousStatus",
+            "type": ["null", "EquipmentStatus"],
+            "doc": "Prior status when known; null for first observation.",
+            "default": null
+          },
+          {
+            "name": "reasonCode",
+            "type": ["null", "string"],
+            "doc": "Optional reason or state-transition code.",
+            "default": null
+          },
+          {
+            "name": "details",
+            "type": {
+              "type": "map",
+              "values": "string"
+            },
+            "doc": "Additional status attributes.",
+            "default": {}
+          }
+        ]
+      },
+      "doc": "Structured status payload."
+    },
+    {
+      "name": "correlationId",
+      "type": "string",
+      "doc": "End-to-end correlation identifier used for tracing and replay."
+    },
+    {
+      "name": "schemaVersion",
+      "type": "string",
+      "doc": "Semantic version of this event contract (e.g. 1.0.0)."
+    },
+    {
+      "name": "sourceEventId",
+      "type": ["null", "string"],
+      "doc": "Correlation or id of the raw telemetry event that triggered this status.",
+      "default": null
+    }
+  ]
+}

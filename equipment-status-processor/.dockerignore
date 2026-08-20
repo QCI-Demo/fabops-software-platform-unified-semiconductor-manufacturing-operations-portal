@@ -1,0 +1,14 @@
+target/
+*.class
+*.jar
+*.log
+.git/
+.gitignore
+.idea/
+*.iml
+*.swp
+*~
+.DS_Store
+Thumbs.db
+chart/
+*.md
