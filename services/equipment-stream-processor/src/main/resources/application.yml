@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: equipment-stream-processor
+
+# Kafka Streams Configuration
+kafka:
+  streams:
+    application-id: fabops-equipment-stream-processor
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    default-key-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+    default-value-serde: org.apache.kafka.common.serialization.Serdes$StringSerde
+    replication-factor: ${KAFKA_REPLICATION_FACTOR:3}
+    processing-guarantee: exactly_once_v2
+    commit-interval-ms: 1000
+    cache-max-buffering: 10485760
+    num-stream-threads: ${KAFKA_STREAM_THREADS:2}
+
+# Topic Configuration
+topics:
+  telemetry-raw:
+    name: ${TOPIC_TELEMETRY_RAW:fabops.telemetry.raw}
+  equipment-status:
+    name: ${TOPIC_EQUIPMENT_STATUS:fabops.equipment.status}
+  critical-alerts:
+    name: ${TOPIC_CRITICAL_ALERTS:fabops.alerts.critical}
+
+# Health Rule Engine Thresholds
+health:
+  thresholds:
+    temperature:
+      warning: 75.0
+      critical: 90.0
+      max: 120.0
+    pressure:
+      warning-low: 0.8
+      warning-high: 1.2
+      critical-low: 0.5
+      critical-high: 1.5
+      min: 0.0
+      max: 2.0
+    error-codes:
+      critical:
+        - E001
+        - E002
+        - E003
+        - E010
+        - E020
+      warning:
+        - W001
+        - W002
+        - W003
+        - W010
+  scoring:
+    base-score: 100
+    temperature-weight: 30
+    pressure-weight: 30
+    error-weight: 40
+
+# Actuator Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    kafka:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.fabops: DEBUG
+    org.apache.kafka: WARN

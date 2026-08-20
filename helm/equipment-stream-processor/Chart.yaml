@@ -1,0 +1,13 @@
+apiVersion: v2
+name: equipment-stream-processor
+description: Helm chart for Equipment Stream Processor - Kafka Streams application for equipment health metrics and critical alerts
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kafka-streams
+  - equipment-health
+  - telemetry
+  - alerts
+maintainers:
+  - name: FabOps Platform Team

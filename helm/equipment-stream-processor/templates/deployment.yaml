@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "equipment-stream-processor.fullname" . }}
+  labels:
+    {{- include "equipment-stream-processor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "equipment-stream-processor.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+      labels:
+        {{- include "equipment-stream-processor.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "equipment-stream-processor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: {{ .Values.kafka.bootstrapServers | quote }}
+            - name: KAFKA_REPLICATION_FACTOR
+              value: {{ .Values.kafka.replicationFactor | quote }}
+            - name: KAFKA_STREAM_THREADS
+              value: {{ .Values.kafka.streamThreads | quote }}
+            - name: TOPIC_TELEMETRY_RAW
+              value: {{ .Values.kafka.topics.telemetryRaw.name | quote }}
+            - name: TOPIC_EQUIPMENT_STATUS
+              value: {{ .Values.kafka.topics.equipmentStatus.name | quote }}
+            - name: TOPIC_CRITICAL_ALERTS
+              value: {{ .Values.kafka.topics.criticalAlerts.name | quote }}
+            # Health thresholds
+            - name: HEALTH_THRESHOLDS_TEMPERATURE_WARNING
+              value: {{ .Values.health.thresholds.temperature.warning | quote }}
+            - name: HEALTH_THRESHOLDS_TEMPERATURE_CRITICAL
+              value: {{ .Values.health.thresholds.temperature.critical | quote }}
+            - name: HEALTH_THRESHOLDS_PRESSURE_WARNING_LOW
+              value: {{ .Values.health.thresholds.pressure.warningLow | quote }}
+            - name: HEALTH_THRESHOLDS_PRESSURE_WARNING_HIGH
+              value: {{ .Values.health.thresholds.pressure.warningHigh | quote }}
+            - name: HEALTH_THRESHOLDS_PRESSURE_CRITICAL_LOW
+              value: {{ .Values.health.thresholds.pressure.criticalLow | quote }}
+            - name: HEALTH_THRESHOLDS_PRESSURE_CRITICAL_HIGH
+              value: {{ .Values.health.thresholds.pressure.criticalHigh | quote }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
