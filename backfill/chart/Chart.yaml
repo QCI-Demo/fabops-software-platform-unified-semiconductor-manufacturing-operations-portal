@@ -1,0 +1,14 @@
+apiVersion: v2
+name: fabops-backfill
+description: Historical backfill Spark job for FabOps telemetry data warehouse
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: FabOps Team
+keywords:
+  - spark
+  - backfill
+  - snowflake
+  - kafka
+  - telemetry

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fabops-backfill"
+version = "0.1.0"
+description = "Historical backfill Spark job for FabOps telemetry data warehouse"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Proprietary"}
+authors = [
+    {name = "FabOps Team"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "pyspark>=3.5.0",
+    "snowflake-connector-python>=3.5.0",
+    "snowflake-sqlalchemy>=1.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "chispa>=0.9.4",
+    "pyspark-stubs>=3.0.0",
+]
+
+[project.scripts]
+backfill = "backfill.backfill_main:main"
+
+[tool.setuptools.packages.find]
+where = ["src/main/python"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+line_length = 100

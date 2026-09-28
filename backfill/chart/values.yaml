@@ -1,0 +1,86 @@
+# Default values for fabops-backfill
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/fabops/backfill
+  pullPolicy: IfNotPresent
+  tag: "0.1.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Spark configuration
+spark:
+  master: "k8s://https://kubernetes.default.svc"
+  driverMemory: "2g"
+  executorMemory: "4g"
+  executorInstances: 3
+  shufflePartitions: 200
+
+# Kafka configuration
+kafka:
+  bootstrapServers: "kafka-headless.kafka.svc.cluster.local:9092"
+  topic: "fabops.telemetry.raw"
+  startingOffset: "earliest"
+  endingOffset: "latest"
+  consumerGroup: "fabops-backfill-consumer"
+  securityProtocol: "PLAINTEXT"
+
+# Snowflake configuration (secrets mounted separately)
+snowflake:
+  url: ""  # Set via secret or values override
+  database: "FABOPS_DW"
+  schema: "STAGING"
+  warehouse: "BACKFILL_WH"
+  table: "TELEMETRY_EVENTS"
+  role: "BACKFILL_ROLE"
+
+# External secrets reference (for Snowflake credentials)
+externalSecrets:
+  enabled: true
+  secretName: "backfill-snowflake-credentials"
+
+# Job configuration
+job:
+  schedule: ""  # Empty = run once, or cron expression for recurring
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400  # 24 hours
+
+# Resource limits
+resources:
+  driver:
+    requests:
+      memory: "2Gi"
+      cpu: "1"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+  executor:
+    requests:
+      memory: "4Gi"
+      cpu: "2"
+    limits:
+      memory: "8Gi"
+      cpu: "4"
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "backfill-sa"
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "4040"
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
