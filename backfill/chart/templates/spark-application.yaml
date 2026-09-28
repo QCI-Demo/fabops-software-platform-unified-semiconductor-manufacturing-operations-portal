@@ -1,0 +1,137 @@
+# SparkApplication CRD for Kubernetes Spark Operator
+# Deploy with: kubectl apply -f spark-application.yaml
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: {{ include "fabops-backfill.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "fabops-backfill.labels" . | nindent 4 }}
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+  imagePullPolicy: {{ .Values.image.pullPolicy }}
+  mainApplicationFile: "local:///opt/spark/work-dir/backfill/backfill_main.py"
+  
+  sparkVersion: "3.5.0"
+  
+  sparkConf:
+    "spark.sql.shuffle.partitions": "{{ .Values.spark.shufflePartitions }}"
+    "spark.sql.adaptive.enabled": "true"
+    "spark.sql.adaptive.coalescePartitions.enabled": "true"
+    "spark.serializer": "org.apache.spark.serializer.KryoSerializer"
+    "spark.datasource.snowflake.autopushdown": "on"
+  
+  deps:
+    packages:
+      - "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0"
+      - "net.snowflake:spark-snowflake_2.12:2.15.0-spark_3.4"
+  
+  driver:
+    cores: 1
+    coreLimit: "2"
+    memory: {{ .Values.spark.driverMemory | quote }}
+    labels:
+      version: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+    serviceAccount: {{ include "fabops-backfill.serviceAccountName" . }}
+    {{- with .Values.podAnnotations }}
+    annotations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    env:
+      - name: BACKFILL_KAFKA_BOOTSTRAP_SERVERS
+        value: {{ .Values.kafka.bootstrapServers | quote }}
+      - name: BACKFILL_KAFKA_TOPIC
+        value: {{ .Values.kafka.topic | quote }}
+      - name: BACKFILL_KAFKA_STARTING_OFFSET
+        value: {{ .Values.kafka.startingOffset | quote }}
+      - name: BACKFILL_KAFKA_ENDING_OFFSET
+        value: {{ .Values.kafka.endingOffset | quote }}
+      - name: BACKFILL_KAFKA_CONSUMER_GROUP
+        value: {{ .Values.kafka.consumerGroup | quote }}
+      - name: BACKFILL_KAFKA_SECURITY_PROTOCOL
+        value: {{ .Values.kafka.securityProtocol | quote }}
+      - name: BACKFILL_SNOWFLAKE_DATABASE
+        value: {{ .Values.snowflake.database | quote }}
+      - name: BACKFILL_SNOWFLAKE_SCHEMA
+        value: {{ .Values.snowflake.schema | quote }}
+      - name: BACKFILL_SNOWFLAKE_WAREHOUSE
+        value: {{ .Values.snowflake.warehouse | quote }}
+      - name: BACKFILL_SNOWFLAKE_TABLE
+        value: {{ .Values.snowflake.table | quote }}
+      - name: BACKFILL_SNOWFLAKE_ROLE
+        value: {{ .Values.snowflake.role | quote }}
+      {{- if .Values.externalSecrets.enabled }}
+      - name: BACKFILL_SNOWFLAKE_URL
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Values.externalSecrets.secretName }}
+            key: url
+      - name: BACKFILL_SNOWFLAKE_USER
+        valueFrom:
+          secretKeyRef:
+            name: {{ .Values.externalSecrets.secretName }}
+            key: user
+      - name: BACKFILL_SNOWFLAKE_PRIVATE_KEY_PATH
+        value: "/etc/snowflake/private_key.pem"
+      {{- end }}
+    {{- if .Values.externalSecrets.enabled }}
+    volumeMounts:
+      - name: snowflake-key
+        mountPath: /etc/snowflake
+        readOnly: true
+    {{- end }}
+    {{- with .Values.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  
+  executor:
+    cores: 2
+    instances: {{ .Values.spark.executorInstances }}
+    memory: {{ .Values.spark.executorMemory | quote }}
+    labels:
+      version: {{ .Values.image.tag | default .Chart.AppVersion | quote }}
+    {{- with .Values.podAnnotations }}
+    annotations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- if .Values.externalSecrets.enabled }}
+    volumeMounts:
+      - name: snowflake-key
+        mountPath: /etc/snowflake
+        readOnly: true
+    {{- end }}
+    {{- with .Values.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  
+  {{- if .Values.externalSecrets.enabled }}
+  volumes:
+    - name: snowflake-key
+      secret:
+        secretName: {{ .Values.externalSecrets.secretName }}
+        items:
+          - key: private_key
+            path: private_key.pem
+  {{- end }}
+  
+  restartPolicy:
+    type: OnFailure
+    onFailureRetries: {{ .Values.job.backoffLimit }}
+    onFailureRetryInterval: 30
+    onSubmissionFailureRetries: 3
+    onSubmissionFailureRetryInterval: 20
+  
+  timeToLiveSeconds: {{ .Values.job.ttlSecondsAfterFinished }}
