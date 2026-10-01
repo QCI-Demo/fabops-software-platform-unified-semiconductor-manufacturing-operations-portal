@@ -1,0 +1,91 @@
+# Grafana Alert Contact Points and Notification Policies
+# Defines where alerts are sent and routing rules
+
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: fabops-data-platform-oncall
+    receivers:
+      - uid: pagerduty-data-platform
+        type: pagerduty
+        settings:
+          integrationKey: ${PAGERDUTY_INTEGRATION_KEY}
+          severity: critical
+          class: ingestion-pipeline
+          component: '{{ .Labels.component }}'
+          group: fabops-data-platform
+        disableResolveMessage: false
+      
+      - uid: slack-data-platform
+        type: slack
+        settings:
+          recipient: '#fabops-data-platform-alerts'
+          token: ${SLACK_TOKEN}
+          username: Grafana Alerts
+          icon_emoji: ':warning:'
+          mentionChannel: here
+          text: |
+            {{ if gt (len .Alerts.Firing) 0 }}
+            :fire: *{{ len .Alerts.Firing }} firing alert(s)*
+            {{ range .Alerts.Firing }}
+            *{{ .Labels.alertname }}*
+            {{ .Annotations.summary }}
+            {{ .Annotations.description }}
+            {{ end }}
+            {{ end }}
+            {{ if gt (len .Alerts.Resolved) 0 }}
+            :white_check_mark: *{{ len .Alerts.Resolved }} resolved alert(s)*
+            {{ end }}
+        disableResolveMessage: false
+
+  - orgId: 1
+    name: fabops-data-platform-email
+    receivers:
+      - uid: email-data-platform
+        type: email
+        settings:
+          addresses: 'data-platform-oncall@fabops.io'
+          singleEmail: true
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: fabops-data-platform-oncall
+    group_by:
+      - alertname
+      - component
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      # Critical alerts go to PagerDuty immediately
+      - receiver: fabops-data-platform-oncall
+        matchers:
+          - severity = critical
+        group_wait: 0s
+        group_interval: 1m
+        repeat_interval: 1h
+        continue: true
+
+      # Warning alerts go to Slack
+      - receiver: fabops-data-platform-oncall
+        matchers:
+          - severity = warning
+        group_wait: 1m
+        group_interval: 5m
+        repeat_interval: 4h
+        continue: false
+
+      # Default: all alerts also sent to email
+      - receiver: fabops-data-platform-email
+        matchers:
+          - severity =~ "warning|critical"
+        group_wait: 5m
+        group_interval: 10m
+        repeat_interval: 12h
+        continue: false
+
+templates: []
+
+muteTimeIntervals: []

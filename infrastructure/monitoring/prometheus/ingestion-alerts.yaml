@@ -1,0 +1,300 @@
+# FabOps Ingestion Pipeline Alert Rules
+# Prometheus alerting rules for Kafka Connect and Backfill Job monitoring
+
+groups:
+  - name: fabops-ingestion-lag
+    interval: 30s
+    rules:
+      # Kafka Connect Lag Alerts
+      - alert: KafkaConnectHighConsumerLag
+        expr: |
+          max(kafka_consumer_fetch_records_lag_max{client_id=~".*connect.*"}) > 120
+        for: 2m
+        labels:
+          severity: warning
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect consumer lag exceeds 2 minutes"
+          description: "Kafka Connect consumer lag is {{ $value | humanizeDuration }} for client {{ $labels.client_id }}. This indicates slow message processing."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-lag"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      - alert: KafkaConnectCriticalConsumerLag
+        expr: |
+          max(kafka_consumer_fetch_records_lag_max{client_id=~".*connect.*"}) > 300
+        for: 5m
+        labels:
+          severity: critical
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect consumer lag exceeds 5 minutes - CRITICAL"
+          description: "Kafka Connect consumer lag is {{ $value | humanizeDuration }} for client {{ $labels.client_id }}. Immediate attention required."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-lag"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      # Backfill Job Lag Alerts
+      - alert: BackfillJobHighLag
+        expr: |
+          max(fabops_backfill_lag_seconds) > 120
+        for: 2m
+        labels:
+          severity: warning
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Backfill job processing lag exceeds 2 minutes"
+          description: "Backfill job lag is {{ $value | humanizeDuration }} for topic {{ $labels.topic }}. Processing is falling behind."
+          runbook_url: "https://docs.fabops.io/runbooks/backfill-lag"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"
+
+      - alert: BackfillJobCriticalLag
+        expr: |
+          max(fabops_backfill_lag_seconds) > 600
+        for: 5m
+        labels:
+          severity: critical
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Backfill job processing lag exceeds 10 minutes - CRITICAL"
+          description: "Backfill job lag is {{ $value | humanizeDuration }} for topic {{ $labels.topic }}. Job may be stalled."
+          runbook_url: "https://docs.fabops.io/runbooks/backfill-lag"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"
+
+  - name: fabops-ingestion-errors
+    interval: 30s
+    rules:
+      # Kafka Connect Error Rate Alerts
+      - alert: KafkaConnectHighErrorRate
+        expr: |
+          (
+            sum(rate(kafka_connect_task_error_total_errors_logged_total[5m])) 
+            / 
+            sum(rate(kafka_connect_sink_task_sink_record_send_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect error rate exceeds 1%"
+          description: "Kafka Connect error rate is {{ $value | humanizePercentage }}. Check connector logs for details."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-errors"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      - alert: KafkaConnectCriticalErrorRate
+        expr: |
+          (
+            sum(rate(kafka_connect_task_error_total_errors_logged_total[5m])) 
+            / 
+            sum(rate(kafka_connect_sink_task_sink_record_send_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect error rate exceeds 5% - CRITICAL"
+          description: "Kafka Connect error rate is {{ $value | humanizePercentage }}. Immediate investigation required."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-errors"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      # Backfill Job Error Rate Alerts
+      - alert: BackfillJobHighErrorRate
+        expr: |
+          (
+            sum(rate(fabops_backfill_errors_total[5m])) 
+            / 
+            sum(rate(fabops_backfill_records_processed_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Backfill job error rate exceeds 1%"
+          description: "Backfill job error rate is {{ $value | humanizePercentage }} for topic {{ $labels.topic }}."
+          runbook_url: "https://docs.fabops.io/runbooks/backfill-errors"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"
+
+      - alert: BackfillJobCriticalErrorRate
+        expr: |
+          (
+            sum(rate(fabops_backfill_errors_total[5m])) 
+            / 
+            sum(rate(fabops_backfill_records_processed_total[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Backfill job error rate exceeds 5% - CRITICAL"
+          description: "Backfill job error rate is {{ $value | humanizePercentage }}. Immediate attention required."
+          runbook_url: "https://docs.fabops.io/runbooks/backfill-errors"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"
+
+      # Dead Letter Queue Alerts
+      - alert: KafkaConnectDLQMessages
+        expr: |
+          increase(kafka_connect_task_error_deadletterqueue_produce_requests_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Messages being sent to Dead Letter Queue"
+          description: "{{ $value }} messages sent to DLQ in last 5 minutes for connector {{ $labels.connector }}."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-dlq"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+  - name: fabops-ingestion-availability
+    interval: 30s
+    rules:
+      # Connector Status Alerts
+      - alert: KafkaConnectorDown
+        expr: |
+          kafka_connect_worker_connector_count == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "No active Kafka Connect connectors"
+          description: "All Kafka Connect connectors appear to be down. Ingestion pipeline is not functioning."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-down"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      - alert: KafkaConnectTaskFailed
+        expr: |
+          kafka_connect_connector_task_status{status="failed"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect task has failed"
+          description: "Task {{ $labels.task }} of connector {{ $labels.connector }} is in FAILED state."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-task-failed"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      # Backfill Job Stalled
+      - alert: BackfillJobStalled
+        expr: |
+          rate(fabops_backfill_records_processed_total[10m]) == 0 
+          and fabops_backfill_job_progress_percent < 100
+        for: 10m
+        labels:
+          severity: critical
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Backfill job appears to be stalled"
+          description: "Backfill job has not processed any records in the last 10 minutes but is not complete (progress: {{ $value }}%)."
+          runbook_url: "https://docs.fabops.io/runbooks/backfill-stalled"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"
+
+      # Excessive Retries
+      - alert: BackfillJobExcessiveRetries
+        expr: |
+          increase(fabops_backfill_retries_total[5m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Backfill job experiencing excessive retries"
+          description: "{{ $value }} retries in the last 5 minutes for topic {{ $labels.topic }}. Check for transient errors."
+          runbook_url: "https://docs.fabops.io/runbooks/backfill-retries"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"
+
+  - name: fabops-ingestion-resources
+    interval: 60s
+    rules:
+      # JVM Memory Alerts
+      - alert: KafkaConnectHighMemoryUsage
+        expr: |
+          (jvm_memory_heap_used{job=~".*kafka-connect.*"} / jvm_memory_heap_max{job=~".*kafka-connect.*"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect JVM heap memory usage is high"
+          description: "JVM heap usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}. Consider increasing heap size."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-memory"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      - alert: KafkaConnectCriticalMemoryUsage
+        expr: |
+          (jvm_memory_heap_used{job=~".*kafka-connect.*"} / jvm_memory_heap_max{job=~".*kafka-connect.*"}) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect JVM heap memory usage is critical"
+          description: "JVM heap usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}. OOM imminent."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-memory"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      # GC Pressure
+      - alert: KafkaConnectHighGCPressure
+        expr: |
+          rate(jvm_gc_collection_time_ms{job=~".*kafka-connect.*"}[5m]) > 500
+        for: 10m
+        labels:
+          severity: warning
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect experiencing high GC pressure"
+          description: "GC time is {{ $value }}ms/s on {{ $labels.instance }}. Performance may be degraded."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-gc"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+  - name: fabops-ingestion-throughput
+    interval: 60s
+    rules:
+      # Low Throughput Alert
+      - alert: KafkaConnectLowThroughput
+        expr: |
+          sum(rate(kafka_connect_sink_task_sink_record_send_total[5m])) < 100
+          and sum(rate(kafka_connect_sink_task_sink_record_send_total[5m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+          team: data-platform
+          component: kafka-connect
+        annotations:
+          summary: "Kafka Connect throughput is low"
+          description: "Kafka Connect is only processing {{ $value }} records/sec. Expected higher throughput."
+          runbook_url: "https://docs.fabops.io/runbooks/kafka-connect-throughput"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-kafka-connect-ingestion"
+
+      # Snowflake Write Latency
+      - alert: BackfillHighSnowflakeWriteLatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(fabops_backfill_snowflake_write_duration_seconds_bucket[5m])) by (le, table)) > 120
+        for: 10m
+        labels:
+          severity: warning
+          team: data-platform
+          component: backfill-job
+        annotations:
+          summary: "Snowflake write latency is high"
+          description: "p95 write latency to {{ $labels.table }} is {{ $value | humanizeDuration }}. Check Snowflake performance."
+          runbook_url: "https://docs.fabops.io/runbooks/snowflake-latency"
+          dashboard_url: "https://grafana.fabops.io/d/fabops-backfill-job"

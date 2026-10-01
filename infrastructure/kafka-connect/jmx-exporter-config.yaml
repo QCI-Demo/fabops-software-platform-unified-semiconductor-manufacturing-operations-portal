@@ -1,0 +1,132 @@
+# JMX Exporter Configuration for Kafka Connect Workers
+# Exposes Prometheus metrics for monitoring ingestion pipelines
+
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Kafka Connect Worker Metrics
+  - pattern: 'kafka.connect<type=connect-worker-metrics>([^:]+):'
+    name: kafka_connect_worker_$1
+    type: GAUGE
+    help: "Kafka Connect worker metrics"
+
+  - pattern: 'kafka.connect<type=connect-worker-metrics, connector=([^,]+)>([^:]+):'
+    name: kafka_connect_worker_connector_$2
+    type: GAUGE
+    labels:
+      connector: "$1"
+    help: "Kafka Connect worker connector metrics"
+
+  # Connect Worker Rebalance Metrics
+  - pattern: 'kafka.connect<type=connect-worker-rebalance-metrics>([^:]+):'
+    name: kafka_connect_worker_rebalance_$1
+    type: GAUGE
+    help: "Kafka Connect worker rebalance metrics"
+
+  # Connector Task Metrics
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=([^,]+), task=([^,]+)>([^:]+):'
+    name: kafka_connect_connector_task_$3
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"
+    help: "Kafka Connect connector task metrics"
+
+  # Sink Task Metrics (for Snowflake sink)
+  - pattern: 'kafka.connect<type=sink-task-metrics, connector=([^,]+), task=([^,]+)>([^:]+):'
+    name: kafka_connect_sink_task_$3
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"
+    help: "Kafka Connect sink task metrics"
+
+  # Source Task Metrics
+  - pattern: 'kafka.connect<type=source-task-metrics, connector=([^,]+), task=([^,]+)>([^:]+):'
+    name: kafka_connect_source_task_$3
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"
+    help: "Kafka Connect source task metrics"
+
+  # Task Error Metrics
+  - pattern: 'kafka.connect<type=task-error-metrics, connector=([^,]+), task=([^,]+)>([^:]+):'
+    name: kafka_connect_task_error_$3
+    type: GAUGE
+    labels:
+      connector: "$1"
+      task: "$2"
+    help: "Kafka Connect task error metrics"
+
+  # Connect Metrics (offset commit, session, etc.)
+  - pattern: 'kafka.connect<type=connect-metrics, client-id=([^,]+)>([^:]+):'
+    name: kafka_connect_client_$2
+    type: GAUGE
+    labels:
+      client_id: "$1"
+    help: "Kafka Connect client metrics"
+
+  # Consumer Group Metrics (lag monitoring)
+  - pattern: 'kafka.consumer<type=consumer-fetch-manager-metrics, client-id=([^,]+), topic=([^,]+), partition=([^,]+)>([^:]+):'
+    name: kafka_consumer_fetch_$4
+    type: GAUGE
+    labels:
+      client_id: "$1"
+      topic: "$2"
+      partition: "$3"
+    help: "Kafka consumer fetch manager metrics"
+
+  - pattern: 'kafka.consumer<type=consumer-coordinator-metrics, client-id=([^,]+)>([^:]+):'
+    name: kafka_consumer_coordinator_$2
+    type: GAUGE
+    labels:
+      client_id: "$1"
+    help: "Kafka consumer coordinator metrics"
+
+  # Producer Metrics
+  - pattern: 'kafka.producer<type=producer-metrics, client-id=([^,]+)>([^:]+):'
+    name: kafka_producer_$2
+    type: GAUGE
+    labels:
+      client_id: "$1"
+    help: "Kafka producer metrics"
+
+  # Snowflake Connector Specific Metrics
+  - pattern: 'snowflake.kafka.connector<type=([^,]+), connector=([^,]+)>([^:]+):'
+    name: snowflake_connector_$1_$3
+    type: GAUGE
+    labels:
+      connector: "$2"
+    help: "Snowflake Kafka connector metrics"
+
+  # JVM Metrics
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(\w+):'
+    name: jvm_memory_heap_$1
+    type: GAUGE
+    help: "JVM heap memory usage"
+
+  - pattern: 'java.lang<type=Memory><NonHeapMemoryUsage>(\w+):'
+    name: jvm_memory_nonheap_$1
+    type: GAUGE
+    help: "JVM non-heap memory usage"
+
+  - pattern: 'java.lang<type=GarbageCollector, name=([^,]+)><>CollectionCount'
+    name: jvm_gc_collection_count
+    type: COUNTER
+    labels:
+      gc: "$1"
+    help: "JVM garbage collection count"
+
+  - pattern: 'java.lang<type=GarbageCollector, name=([^,]+)><>CollectionTime'
+    name: jvm_gc_collection_time_ms
+    type: COUNTER
+    labels:
+      gc: "$1"
+    help: "JVM garbage collection time in milliseconds"
+
+  - pattern: 'java.lang<type=Threading><>ThreadCount'
+    name: jvm_thread_count
+    type: GAUGE
+    help: "JVM thread count"
