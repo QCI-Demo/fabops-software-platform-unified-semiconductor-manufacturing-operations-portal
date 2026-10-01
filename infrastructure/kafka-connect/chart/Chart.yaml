@@ -1,0 +1,14 @@
+# Helm chart for Kafka Connect with JMX Exporter
+apiVersion: v2
+name: kafka-connect
+description: Kafka Connect cluster with JMX Exporter for FabOps ingestion pipelines
+type: application
+version: 0.1.0
+appVersion: "7.5.0"
+keywords:
+  - kafka
+  - connect
+  - prometheus
+  - monitoring
+maintainers:
+  - name: FabOps Platform Team
