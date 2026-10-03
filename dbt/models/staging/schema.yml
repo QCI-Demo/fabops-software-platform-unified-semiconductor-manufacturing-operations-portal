@@ -1,0 +1,131 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw data tables populated by Kafka Connect sink connectors
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'FABOPS_DEV') }}"
+    schema: RAW
+    freshness:
+      warn_after: {count: 1, period: hour}
+      error_after: {count: 4, period: hour}
+    loaded_at_field: _ingested_at
+    tables:
+      - name: raw_telemetry_events
+        description: Raw telemetry events from fabops.telemetry.raw Kafka topic
+        identifier: RAW_TELEMETRY_EVENTS
+        columns:
+          - name: record_content
+            description: JSON payload from Kafka message value
+          - name: record_metadata
+            description: Kafka message metadata (offset, partition, timestamp)
+          - name: _ingested_at
+            description: Timestamp when record was ingested by Kafka Connect
+
+      - name: equipment_status_events
+        description: Equipment health status events from fabops.equipment.status Kafka topic
+        identifier: EQUIPMENT_STATUS_EVENTS
+        columns:
+          - name: record_content
+            description: JSON payload containing equipment health assessment
+          - name: record_metadata
+            description: Kafka message metadata
+          - name: _ingested_at
+            description: Ingestion timestamp
+
+      - name: critical_alert_events
+        description: Critical alert events from fabops.alerts.critical Kafka topic
+        identifier: CRITICAL_ALERT_EVENTS
+        columns:
+          - name: record_content
+            description: JSON payload containing alert details
+          - name: record_metadata
+            description: Kafka message metadata
+          - name: _ingested_at
+            description: Ingestion timestamp
+
+models:
+  - name: stg_telemetry
+    description: >
+      Staged telemetry events with typed columns and parsed JSON.
+      Source: fabops.telemetry.raw Kafka topic
+    columns:
+      - name: event_id
+        description: Unique identifier for the telemetry event
+        tests:
+          - not_null
+          - unique
+      - name: equipment_id
+        description: Equipment that generated the telemetry
+        tests:
+          - not_null
+      - name: correlation_id
+        description: Correlation ID for distributed tracing
+      - name: event_timestamp
+        description: When the telemetry was generated
+        tests:
+          - not_null
+      - name: temperature_celsius
+        description: Equipment temperature reading in Celsius
+      - name: pressure_bar
+        description: Equipment pressure reading in bar
+      - name: error_codes
+        description: Array of active error codes
+      - name: schema_version
+        description: Telemetry event schema version
+
+  - name: stg_equipment_status
+    description: >
+      Staged equipment health status events.
+      Source: fabops.equipment.status Kafka topic (compacted)
+    columns:
+      - name: event_id
+        description: Unique identifier for the health event
+        tests:
+          - not_null
+          - unique
+      - name: equipment_id
+        description: Equipment being assessed
+        tests:
+          - not_null
+      - name: health_score
+        description: Computed health score (0-100)
+        tests:
+          - not_null
+      - name: severity
+        description: "Health severity: HEALTHY, WARNING, or CRITICAL"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['HEALTHY', 'WARNING', 'CRITICAL']
+      - name: is_critical
+        description: Boolean flag for critical state
+      - name: temperature_status
+        description: Temperature dimension status
+      - name: pressure_status
+        description: Pressure dimension status
+      - name: error_status
+        description: Error codes dimension status
+
+  - name: stg_critical_alerts
+    description: >
+      Staged critical alert events.
+      Source: fabops.alerts.critical Kafka topic
+    columns:
+      - name: alert_id
+        description: Unique identifier for the alert
+        tests:
+          - not_null
+          - unique
+      - name: equipment_id
+        description: Equipment that triggered the alert
+        tests:
+          - not_null
+      - name: alert_type
+        description: Type of critical alert
+        tests:
+          - accepted_values:
+              values: ['TEMPERATURE_CRITICAL', 'PRESSURE_CRITICAL', 'ERROR_CODE_CRITICAL', 'COMBINED_CRITICAL']
+      - name: alert_timestamp
+        description: When the alert was generated
+        tests:
+          - not_null

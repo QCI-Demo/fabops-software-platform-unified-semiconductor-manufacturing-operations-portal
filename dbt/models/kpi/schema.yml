@@ -1,0 +1,190 @@
+version: 2
+
+models:
+  - name: kpi_equipment_health_hourly
+    description: >
+      Hourly aggregation of equipment health metrics for trend analysis.
+      Calculates health score statistics, severity distribution, and dimension breakdown.
+      
+      **Formula Reference:**
+      - Health Score = (temp_score × 30% + pressure_score × 30% + error_score × 40%)
+      - Critical if: any dimension critical OR 2+ warnings OR score < 40
+    columns:
+      - name: surrogate_key
+        description: Unique key combining equipment_id and hour_start
+        tests:
+          - unique
+          - not_null
+      - name: equipment_id
+        description: Equipment identifier
+        tests:
+          - not_null
+      - name: hour_start
+        description: Start of the hourly bucket
+        tests:
+          - not_null
+      - name: avg_health_score
+        description: Average health score for the hour (0-100)
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: total_events
+        description: Total health events in the hour
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: healthy_pct
+        description: Percentage of events in HEALTHY state
+      - name: critical_pct
+        description: Percentage of events in CRITICAL state
+
+  - name: kpi_equipment_health_daily
+    description: >
+      Daily summary of equipment health metrics for executive dashboards.
+      Includes OEE proxy score and MTBF approximation.
+    columns:
+      - name: surrogate_key
+        description: Unique key combining equipment_id and event_date
+        tests:
+          - unique
+          - not_null
+      - name: equipment_id
+        description: Equipment identifier
+        tests:
+          - not_null
+      - name: event_date
+        description: Date of the summary
+        tests:
+          - not_null
+      - name: uptime_pct
+        description: Percentage of time equipment was in HEALTHY state
+      - name: oee_proxy_score
+        description: >
+          Overall Equipment Effectiveness proxy score (0-100).
+          Formula: (100 × healthy + 50 × warning + 0 × critical) / total
+      - name: mtbf_hours_proxy
+        description: Mean Time Between Failures approximation in hours
+
+  - name: kpi_critical_alerts_daily
+    description: >
+      Daily aggregation of critical alerts by equipment.
+      Used for incident analysis and root cause identification.
+    columns:
+      - name: surrogate_key
+        description: Unique key combining equipment_id and alert_date
+        tests:
+          - unique
+          - not_null
+      - name: equipment_id
+        description: Equipment that triggered alerts
+        tests:
+          - not_null
+      - name: alert_date
+        description: Date of the alert summary
+        tests:
+          - not_null
+      - name: total_alerts
+        description: Total critical alerts for the day
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+      - name: temperature_alerts
+        description: Count of temperature-triggered alerts
+      - name: pressure_alerts
+        description: Count of pressure-triggered alerts
+      - name: error_code_alerts
+        description: Count of error-code-triggered alerts
+      - name: combined_alerts
+        description: Count of combined-condition alerts
+
+  - name: kpi_telemetry_hourly
+    description: >
+      Hourly aggregation of raw telemetry measurements.
+      Includes calculated health dimension scores based on threshold rules.
+      
+      **Threshold Reference:**
+      - Temperature: Warning ≥75°C, Critical ≥90°C
+      - Pressure: Warning <0.8 or >1.2 bar, Critical <0.5 or >1.5 bar
+    columns:
+      - name: surrogate_key
+        description: Unique key combining equipment_id and hour_start
+        tests:
+          - unique
+          - not_null
+      - name: equipment_id
+        description: Equipment identifier
+        tests:
+          - not_null
+      - name: hour_start
+        description: Start of the hourly bucket
+        tests:
+          - not_null
+      - name: avg_temperature
+        description: Average temperature in Celsius
+      - name: max_temperature
+        description: Maximum temperature reading
+      - name: avg_pressure
+        description: Average pressure in bar
+      - name: calc_avg_health_score
+        description: Calculated health score based on telemetry thresholds
+
+  - name: kpi_fleet_health_summary
+    description: >
+      Daily fleet-wide summary for executive dashboards.
+      Aggregates health metrics across all equipment.
+    columns:
+      - name: surrogate_key
+        description: Unique key based on snapshot_date
+        tests:
+          - unique
+          - not_null
+      - name: snapshot_date
+        description: Date of the fleet summary
+        tests:
+          - not_null
+      - name: total_equipment
+        description: Count of equipment reporting data
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+      - name: fleet_avg_health_score
+        description: Average health score across all equipment
+      - name: fleet_uptime_pct
+        description: Fleet-wide uptime percentage
+      - name: total_critical_alerts
+        description: Total critical alerts across the fleet
+
+  - name: kpi_equipment_current_state
+    description: >
+      Near-real-time current state of each equipment.
+      Provides latest health status for monitoring dashboards.
+    columns:
+      - name: surrogate_key
+        description: Unique key combining equipment_id and snapshot_hour
+        tests:
+          - unique
+          - not_null
+      - name: equipment_id
+        description: Equipment identifier
+        tests:
+          - not_null
+      - name: current_health_score
+        description: Latest health score (0-100)
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "current_health_score is not null"
+      - name: current_severity
+        description: Current health severity
+        tests:
+          - accepted_values:
+              values: ['HEALTHY', 'WARNING', 'CRITICAL']
+              where: "current_severity is not null"
+      - name: minutes_since_status
+        description: Minutes since last status update (staleness indicator)

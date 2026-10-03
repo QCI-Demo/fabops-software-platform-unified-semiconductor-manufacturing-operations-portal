@@ -1,0 +1,31 @@
+# Example dbt profile configuration for FabOps warehouse
+# Copy to ~/.dbt/profiles.yml and update with your credentials
+
+fabops:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: FABOPS_DEVELOPER
+      database: FABOPS_DEV
+      warehouse: FABOPS_WH
+      schema: PUBLIC
+      threads: 4
+      client_session_keep_alive: false
+      query_tag: dbt_fabops
+
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: FABOPS_PRODUCTION
+      database: FABOPS_PROD
+      warehouse: FABOPS_WH_PROD
+      schema: PUBLIC
+      threads: 8
+      client_session_keep_alive: false
+      query_tag: dbt_fabops_prod
