@@ -1,0 +1,49 @@
+name: fabops_warehouse
+version: '1.0.0'
+config-version: 2
+
+profile: 'fabops'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  # Health scoring weights (from HealthRuleEngine)
+  temperature_weight: 30
+  pressure_weight: 30
+  error_weight: 40
+  
+  # Temperature thresholds (Celsius)
+  temperature_warning: 75.0
+  temperature_critical: 90.0
+  
+  # Pressure thresholds (bar)
+  pressure_warning_low: 0.8
+  pressure_warning_high: 1.2
+  pressure_critical_low: 0.5
+  pressure_critical_high: 1.5
+  
+  # Incremental lookback for late-arriving data
+  incremental_lookback_hours: 4
+
+models:
+  fabops_warehouse:
+    staging:
+      +materialized: view
+      +schema: staging
+      +tags: ['staging']
+    kpi:
+      +materialized: incremental
+      +schema: kpi
+      +tags: ['kpi', 'incremental']
+      +on_schema_change: sync_all_columns
+      +incremental_strategy: merge
